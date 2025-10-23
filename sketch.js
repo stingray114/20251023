@@ -31,6 +31,7 @@ window.addEventListener('message', function (event) {
         // 關鍵步驟 2: 呼叫重新繪製 (見方案二)
         // ----------------------------------------
         if (typeof redraw === 'function') {
+            // 在接收新分數時呼叫 redraw()
             redraw(); 
         }
     }
@@ -44,8 +45,9 @@ function setup() {
     // ... (其他設置)
     createCanvas(windowWidth / 2, windowHeight / 2); 
     background(255); 
-    colorMode(HSB, 360, 100, 100, 100); // 更改為 HSB 顏色模式，方便粒子顏色變換
-    noLoop(); // 如果您希望分數只有在改變時才繪製，保留此行
+    // 啟用 HSB 顏色模式，更有利於粒子顏色變化
+    colorMode(HSB, 360, 100, 100, 100); 
+    noLoop(); // 設置為靜態繪製，除非分數改變或發射煙火
 } 
 
 // 新增：Particle 類別 (用於定義每個煙火粒子的行為)
@@ -68,6 +70,7 @@ class Particle {
     show() {
         // 使用 HSB 顏色模式的顏色
         noStroke();
+        // 根據壽命調整透明度
         fill(this.hu, 100, 100, this.lifespan / 255 * 100); 
         ellipse(this.pos.x, this.pos.y, 5);
     }
@@ -83,23 +86,20 @@ function celebrateFirework(x, y, particleCount = 50) {
     for (let i = 0; i < particleCount; i++) {
         fireworkParticles.push(new Particle(x, y, hu));
     }
-    // 為了讓煙火動起來，暫時開啟 loop
+    
+    // !!! 關鍵修正：確保動畫啟動 !!!
+    // 發射煙火時，必須開啟 loop() 來讓 draw() 連續執行
     loop(); 
-    // 在短暫延遲後停止 loop，確保粒子有時間繪製
-    setTimeout(() => {
-        if (fireworkParticles.length === 0) {
-             noLoop();
-        }
-    }, 1000); // 1秒後檢查是否停止
 }
 
 
 // score_display.js 中的 draw() 函數片段
 
 function draw() { 
-    // 讓背景有一點點殘影，製造拖尾效果
-    background(255, 15); // 清除背景 (添加少量透明度) 
-
+    // !!! 關鍵修正：帶透明度的背景清除，製造拖尾效果 !!!
+    // 每次執行只清除一小部分，創造拖尾效果
+    background(255, 15); 
+    
     // 計算百分比
     let percentage = maxScore > 0 ? (finalScore / maxScore) * 100 : 0;
     
@@ -117,8 +117,8 @@ function draw() {
         // -----------------------------------------------------------------
         // 新增：100% 滿分時觸發煙火特效
         // -----------------------------------------------------------------
+        // 只有在滿分且當前沒有正在爆炸的粒子時才發射
         if (percentage === 100 && fireworkParticles.length === 0) {
-            // 滿分時且還沒有正在爆炸的粒子，則發射煙火
             celebrateFirework(width / 2, height / 2 + 150, 80);
         }
         
@@ -173,11 +173,13 @@ function draw() {
         }
     }
     
-    // 如果所有粒子都已經消失，並且 loop() 仍處於開啟狀態，則關閉 loop()
-    if (fireworkParticles.length === 0 && frameRate() > 0) {
+    // !!! 關鍵修正：在粒子消失後停止動畫並清除殘影 !!!
+    if (fireworkParticles.length === 0) {
+        // 當所有粒子都消失後，停止 loop
         noLoop();
-        // 為了確保分數文字能顯示清晰，重新繪製一次不帶透明度的背景
-        background(255);
+        // 為了確保文字和圖形顯示清晰，在停止前用完全不透明的背景重繪一次
+        background(255); 
+        // 呼叫一次 redraw() 來顯示靜態畫面
         redraw();
     }
 }
